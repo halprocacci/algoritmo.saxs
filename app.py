@@ -24,8 +24,20 @@ with st.expander("📖 Instructions for Use"):
 # ==========================================
 st.sidebar.header("⚙️ Processing Parameters")
 
-# 1. Moltiplicatore Diamond
-applica_diamond = st.sidebar.checkbox("Diamond Dataset (q scaling: multiply q × 10)", value=False)
+# 1. Moltiplicatore Diamond (Ora con due bottoni)
+st.sidebar.subheader("q-Axis Scaling")
+if "multiply_q" not in st.session_state:
+    st.session_state.multiply_q = False
+
+col_btn1, col_btn2 = st.sidebar.columns(2)
+if col_btn1.button("Input q in nm⁻¹"):
+    st.session_state.multiply_q = False
+if col_btn2.button("Input q in Å⁻¹"):
+    st.session_state.multiply_q = True
+
+applica_diamond = st.session_state.multiply_q
+st.sidebar.caption(f"Current scaling state: **{'Multiply × 10' if applica_diamond else 'No Scaling'}**")
+
 
 # 2. Window Length con preset guidati
 preset_finestra = st.sidebar.selectbox(
