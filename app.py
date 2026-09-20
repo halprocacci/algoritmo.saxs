@@ -36,7 +36,7 @@ if col_btn2.button("Input q in Å⁻¹"):
     st.session_state.multiply_q = True
 
 applica_diamond = st.session_state.multiply_q
-st.sidebar.caption(f"Current scaling state: **{'Multiply × 10' if applica_diamond else 'No Scaling'}**")
+st.sidebar.caption(f"Current scaling state: **{'q in Å⁻¹' if applica_diamond else 'q in nm⁻¹'}**")
 
 
 # 2. Window Length con preset guidati
@@ -73,7 +73,7 @@ r2_singolo_min = st.sidebar.number_input("Minimum R² Threshold (Single)", value
 st.sidebar.markdown("---")
 st.sidebar.caption("""
 **Funding Acknowledgement:**  
-This project has received funding from the European Research Council (ERC) under the European Union’s Horizon 2020 research and innovation programme (grant agreement No. 949229, CryForm).
+grant agreement No. 949229, CryForm.
 """)
 
 # ==========================================
