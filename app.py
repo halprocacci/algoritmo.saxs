@@ -12,40 +12,57 @@ st.set_page_config(page_title="SAXS Analyzer", layout="wide")
 st.title("🔬 SAXS Lamellar Phase Analyzer")
 
 # ==========================================
+# ISTRUZIONI D'USO / INSTRUCTIONS FOR USE
+# ==========================================
+with st.expander("📖 Instructions for Use"):
+    st.write("""
+    *(Insert your operational instructions, formatting guidelines for the .csv, and theoretical background here...)*
+    """)
+
+# ==========================================
 # SIDEBAR: PARAMETRI E OPZIONI UTENTE
 # ==========================================
-st.sidebar.header("⚙️ Parametri di Elaborazione")
+st.sidebar.header("⚙️ Processing Parameters")
 
 # 1. Moltiplicatore Diamond
-applica_diamond = st.sidebar.checkbox("Dataset Diamond (q in Å: moltiplica q × 10)", value=False)
+applica_diamond = st.sidebar.checkbox("Diamond Dataset (q scaling: multiply q × 10)", value=False)
 
 # 2. Window Length con preset guidati
 preset_finestra = st.sidebar.selectbox(
     "Preset Window Length (Savitzky-Golay)",
-    ["Personalizzato", "Campioni all'equilibrio (29)", "Rampe di temperatura (45)", "Diamond (11)"]
+    ["Custom", "Equilibrated Samples (29)", "Temperature Ramps (45)", "Diamond (11)"]
 )
-if preset_finestra == "Campioni all'equilibrio (29)":
+if preset_finestra == "Equilibrated Samples (29)":
     default_win = 29
-elif preset_finestra == "Rampe di temperatura (45)":
+elif preset_finestra == "Temperature Ramps (45)":
     default_win = 45
 elif preset_finestra == "Diamond (11)":
     default_win = 11
 else:
     default_win = 15
 
-window_length = st.sidebar.slider("Window Length (deve essere dispari)", min_value=5, max_value=101, value=default_win, step=2)
-polyorder = st.sidebar.slider("Grado Polinomio (Polyorder)", min_value=1, max_value=5, value=3)
+window_length = st.sidebar.slider("Window Length (must be an odd integer)", min_value=5, max_value=101, value=default_win, step=2)
+polyorder = st.sidebar.slider("Polynomial Order (Polyorder)", min_value=1, max_value=5, value=3)
 
 # 3. Taglio Range q
-st.sidebar.subheader("Intervallo Asse q")
+st.sidebar.subheader("q-Axis Range")
 col_q1, col_q2 = st.sidebar.columns(2)
 q_min = col_q1.number_input("q min", value=0.4, step=0.1)
 q_max = col_q2.number_input("q max", value=5.2, step=0.1)
 
 # 4. Parametri Regressione e Riconoscimento Fasi
-st.sidebar.subheader("Soglie Cristallografiche")
-prominenza_min = st.sidebar.number_input("Soglia Prominenza Minima", value=0.0010, format="%.4f", step=0.0005)
-r2_singolo_min = st.sidebar.number_input("R² Minimo (Singolo)", value=0.9997, format="%.4f", step=0.0001)
+st.sidebar.subheader("Crystallographic Thresholds")
+prominenza_min = st.sidebar.number_input("Minimum Peak Prominence Threshold", value=0.0010, format="%.4f", step=0.0005)
+r2_singolo_min = st.sidebar.number_input("Minimum R² Threshold (Single)", value=0.9997, format="%.4f", step=0.0001)
+
+# ==========================================
+# ERC FUNDING ACKNOWLEDGEMENT
+# ==========================================
+st.sidebar.markdown("---")
+st.sidebar.caption("""
+**Funding Acknowledgement:**  
+This project has received funding from the European Research Council (ERC) under the European Union’s Horizon 2020 research and innovation programme (grant agreement No. 949229, CryForm).
+""")
 
 # ==========================================
 # FUNZIONI CORE (CALCOLI IN MEMORIA)
@@ -207,44 +224,43 @@ def calcola_regressione(picchi_riga, prom_min, r2_threshold):
 # ==========================================
 # INTERFACCIA PRINCIPALE
 # ==========================================
-uploaded_file = st.file_uploader("Carica il file SAXS (.csv delimitato da ';')", type=["csv", "txt"])
+uploaded_file = st.file_uploader("Upload SAXS Data File (semicolon-delimited .csv)", type=["csv", "txt"])
 
 if uploaded_file is not None:
     # Esegue il filtraggio e l'elaborazione del segnale
-    with st.spinner("Filtraggio e derivazione del segnale in corso..."):
+    with st.spinner("Filtering and computing signal derivatives..."):
         x_vals, y_raw, y_filt, deriv, labels, picchi_dict = elabora_matrici(
             uploaded_file, applica_diamond, window_length, polyorder, q_min, q_max
         )
 
-    st.success(f"Dati caricati con successo: {len(labels)} campioni/temperature identificati.")
+    st.success(f"Data successfully loaded: {len(labels)} samples/temperatures identified.")
 
     # TABS INTERFACCIA
-    tab_grafici, tab_singola, tab_batch = st.tabs(["📊 Grafici del Segnale", "🎯 Analisi Singola Riga", "🚀 Analisi Multipla (Batch)"])
+    tab_grafici, tab_singola, tab_batch = st.tabs(["📊 Signal Plots", "🎯 Single-Spectrum Analysis", "🚀 Batch Analysis"])
 
     # ---------------- TAB 1: GRAFICI ----------------
-    # ---------------- TAB 1: GRAFICI ----------------
     with tab_grafici:
-        st.subheader("Controllo Spettri e Derivate")
+        st.subheader("Spectra and Derivative Diagnostics")
         
         # Scelta tra vista singola o sovrapposizione globale
         modalita_grafico = st.radio(
-            "Modalità di visualizzazione:",
-            ["Tutte le curve sovrapposte", "Singolo campione"],
+            "Display Mode:",
+            ["Overlay All Spectra", "Single Spectrum"],
             horizontal=True
         )
 
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 5))
 
-        if modalita_grafico == "Tutte le curve sovrapposte":
+        if modalita_grafico == "Overlay All Spectra":
             # Mostra tutte le righe insieme
             for i in range(len(labels)):
                 ax1.plot(x_vals, y_raw[i], label=labels[i], alpha=0.7)
                 ax2.plot(x_vals, y_filt[i], label=labels[i], alpha=0.7)
                 ax3.plot(x_vals, deriv[i], label=labels[i], alpha=0.7)
 
-            ax1.set_title("1. Tutte le Curve Grezze")
-            ax2.set_title(f"2. Curve Filtrate (win={window_length})")
-            ax3.set_title("3. Derivate Prime Esatte")
+            ax1.set_title("1. Raw Scattering Curves")
+            ax2.set_title(f"2. Filtered Curves (win={window_length})")
+            ax3.set_title("3. Exact First Derivatives")
             
             # Mostra la legenda solo se non ci sono troppi campioni da coprire il grafico
             if len(labels) <= 15:
@@ -253,18 +269,18 @@ if uploaded_file is not None:
         else:
             # Vista singola riga
             idx_grafico = st.selectbox(
-                "Seleziona il campione da visualizzare",
+                "Select Sample for Visualization",
                 options=range(len(labels)),
-                format_func=lambda i: f"Riga {i+1}: {labels[i]}"
+                format_func=lambda i: f"Row {i+1}: {labels[i]}"
             )
-            ax1.plot(x_vals, y_raw[idx_grafico], color='black', label="Grezzo")
-            ax1.set_title(f"1. Spettro Grezzo ({labels[idx_grafico]})")
+            ax1.plot(x_vals, y_raw[idx_grafico], color='black', label="Raw")
+            ax1.set_title(f"1. Raw Spectrum ({labels[idx_grafico]})")
 
             ax2.plot(x_vals, y_filt[idx_grafico], color='blue', label=f"S-G (win={window_length})")
-            ax2.set_title("2. Curva Filtrata")
+            ax2.set_title("2. Filtered Curve")
 
             ax3.plot(x_vals, deriv[idx_grafico], color='red', label="dy/dx")
-            ax3.set_title("3. Derivata Prima Esatta")
+            ax3.set_title("3. Exact First Derivative")
 
         # Impostazioni assi comuni
         ax1.set_yscale('log')
@@ -281,37 +297,38 @@ if uploaded_file is not None:
 
         plt.tight_layout()
         st.pyplot(fig)
+        
     # ---------------- TAB 2: SINGOLA RIGA ----------------
     with tab_singola:
-        st.subheader("Calcolo Retta e d-spacing")
-        riga_scelta = st.number_input("Seleziona Indice Riga da analizzare", min_value=1, max_value=len(labels), value=1)
+        st.subheader("Linear Regression and d-Spacing Calculation")
+        riga_scelta = st.number_input("Select Row Index for Analysis", min_value=1, max_value=len(labels), value=1)
         
-        if st.button("Esegui Regressione per Riga Selezionata"):
+        if st.button("Execute Regression for Selected Row"):
             picchi_target = picchi_dict.get(riga_scelta, [])
             risultati = calcola_regressione(picchi_target, prominenza_min, r2_singolo_min)
             
-            st.write(f"**Campione:** {labels[riga_scelta - 1]}")
+            st.write(f"**Sample:** {labels[riga_scelta - 1]}")
             if not risultati:
-                st.warning("Nessuna fase lamellare allineata con i criteri impostati.")
+                st.warning("No lamellar phase aligns with the defined crystallographic criteria.")
             else:
                 for idx_fase, res in enumerate(risultati):
-                    st.markdown(f"### Fase identificata #{idx_fase + 1} (Picco fondamentale a q ≈ {res['q1']})")
+                    st.markdown(f"### Identified Phase #{idx_fase + 1} (Fundamental Peak at q ≈ {res['q1']})")
                     col1, col2 = st.columns([1, 2])
                     
                     with col1:
-                        st.metric(label="d-spacing calcolato", value=f"{res['d_spacing']:.4f} Å")
-                        st.write("**Ordini identificati (n, q):**")
+                        st.metric(label="Calculated d-spacing", value=f"{res['d_spacing']:.4f} Å")
+                        st.write("**Identified Diffraction Orders (n, q):**")
                         st.write(res['punti'][1:])
-                        st.write(f"**Valori R² sequenziali:** {res['R2']}")
+                        st.write(f"**Sequential R² Values:** {res['R2']}")
                     
                     with col2:
                         fig_fit, ax_fit = plt.subplots(figsize=(6, 3.5))
                         x_pts = [p[0] for p in res['punti']]
                         y_pts = [p[1] for p in res['punti']]
-                        ax_fit.scatter(x_pts, y_pts, color='crimson', zorder=3, label="Picchi sperimentali")
+                        ax_fit.scatter(x_pts, y_pts, color='crimson', zorder=3, label="Experimental Peaks")
                         x_line = np.linspace(0, max(x_pts), 50)
                         ax_fit.plot(x_line, res['slope'] * x_line, '--', color='navy', label=f"Fit (m={res['slope']:.4f})")
-                        ax_fit.set_xlabel("Ordine di riflessione (n)")
+                        ax_fit.set_xlabel("Diffraction Order (n)")
                         ax_fit.set_ylabel("q (Å⁻¹)")
                         ax_fit.grid(True, alpha=0.3)
                         ax_fit.legend()
@@ -319,19 +336,19 @@ if uploaded_file is not None:
 
     # ---------------- TAB 3: BATCH ANALYSIS ----------------
     with tab_batch:
-        st.subheader("Elaborazione Batch Automatica")
-        tipo_batch = st.radio("Seleziona righe da elaborare:", ["Tutte le righe del file", "Intervallo personalizzato"])
+        st.subheader("Automated Batch Processing")
+        tipo_batch = st.radio("Select rows for processing:", ["All rows in dataset", "Custom range"])
         
-        if tipo_batch == "Intervallo personalizzato":
+        if tipo_batch == "Custom range":
             col_b1, col_b2 = st.columns(2)
-            b_start = col_b1.number_input("Da riga", min_value=1, max_value=len(labels), value=1)
-            b_end = col_b2.number_input("A riga", min_value=1, max_value=len(labels), value=len(labels))
+            b_start = col_b1.number_input("Start row", min_value=1, max_value=len(labels), value=1)
+            b_end = col_b2.number_input("End row", min_value=1, max_value=len(labels), value=len(labels))
             righe_batch = list(range(b_start, b_end + 1))
         else:
             righe_batch = list(range(1, len(labels) + 1))
 
-        if st.button("Avvia Analisi Batch"):
-            log_batch = f"--- LOG ANALISI SAXS | Data: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')} ---\n\n"
+        if st.button("Run Batch Analysis"):
+            log_batch = f"--- SAXS ANALYSIS LOG | Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')} ---\n\n"
             progress_bar = st.progress(0)
             
             dati_tabella = []
@@ -340,35 +357,35 @@ if uploaded_file is not None:
                 risultati = calcola_regressione(picchi_target, prominenza_min, r2_singolo_min)
                 
                 label_campione = labels[r_idx - 1]
-                log_batch += f"Riga {r_idx} | {label_campione}\n"
+                log_batch += f"Row {r_idx} | {label_campione}\n"
                 
                 if not risultati:
-                    log_batch += "  Nessuna fase lamellare rilevata.\n"
+                    log_batch += "  No lamellar phase detected.\n"
                 else:
                     for res in risultati:
-                        log_batch += f"  Fase (q1={res['q1']}): {res['punti']}\n"
+                        log_batch += f"  Phase (q1={res['q1']}): {res['punti']}\n"
                         log_batch += f"  R^2: {res['R2']}\n"
                         log_batch += f"  d-spacing: {res['d_spacing']:.4f} Å\n"
                         
                         dati_tabella.append({
-                            "Riga": r_idx,
-                            "Campione": label_campione,
+                            "Row": r_idx,
+                            "Sample": label_campione,
                             "q1 (Å⁻¹)": res['q1'],
                             "d-spacing (Å)": round(res['d_spacing'], 4),
-                            "R² finale": round(res['R2'][-1], 6) if res['R2'] else None,
-                            "Numero Picchi": len(res['punti']) - 1
+                            "Final R²": round(res['R2'][-1], 6) if res['R2'] else None,
+                            "Peak Count": len(res['punti']) - 1
                         })
                 log_batch += "---------------------------------------------------\n"
                 progress_bar.progress((count + 1) / len(righe_batch))
 
-            st.success("Analisi Batch completata!")
+            st.success("Batch Analysis Completed Successfully!")
             
             if dati_tabella:
                 st.dataframe(pd.DataFrame(dati_tabella), use_container_width=True)
             
             st.download_button(
-                label="📥 Scarica Storico Analisi (.txt)",
+                label="📥 Download Analysis Log (.txt)",
                 data=log_batch,
-                file_name="storico_analisi_batch.txt",
+                file_name="batch_analysis_log.txt",
                 mime="text/plain"
             )
