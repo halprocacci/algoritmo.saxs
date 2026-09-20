@@ -15,7 +15,7 @@ st.title("🔬 SAXS Lamellar Phase Analyzer")
 # ISTRUZIONI D'USO / INSTRUCTIONS FOR USE
 # ==========================================
 with st.expander("📖 Instructions for Use"):
-    st.write("""
+    st.write(""" ciao
     *(Insert your operational instructions, formatting guidelines for the .csv, and theoretical background here...)*
     """)
 
