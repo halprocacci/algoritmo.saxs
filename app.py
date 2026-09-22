@@ -73,7 +73,7 @@ r2_singolo_min = st.sidebar.number_input("Minimum R² Threshold (Single)", value
 st.sidebar.markdown("---")
 st.sidebar.caption("""
 **Funding Acknowledgement:**  
-grant agreement No. 949229, CryForm.
+ERC grant agreement No. 949229, CryForm.
 """)
 
 # ==========================================
